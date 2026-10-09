@@ -24,16 +24,11 @@ Lending Club public loan data, 2007–2018, ~2.26 million rows and 145 columns. 
 
 Three decisions here were the ones I actually had to think about:
 
-1. **How to define "default".** Lending Club's `loan_status` has about ten values. I grouped `Charged Off`, `Default`, `Late (31–120 days)`, `Late (16–30 days)` and the two `Does not meet the credit policy...Charged Off` variants as the positive class. Lumping the "late" statuses in with the actually-charged-off loans is a judgment call — those borrowers aren't technically defaults yet. I chose to include them because for a credit team the operational decision point is "is this loan showing distress", not "has it already failed". I'll revisit this when I look at calibration in 04.
+1. **How to define "default".** Lending Club's `loan_status` has about ten values. I grouped `Charged Off`, `Default`, `Late (31–120 days)`, `Late (16–30 days)` and `Does not meet the credit policy. Status:Charged Off` as the positive class. Lumping the "late" statuses in with the actually-charged-off loans is a judgment call — those borrowers aren't technically defaults yet. I chose to include them because for a credit team the operational decision point is "is this loan showing distress", not "has it already failed". I'll revisit this when I look at calibration in 04.
 2. **How to sample.** The full set is manageable but slow to iterate on, so I stratified-sampled 250k rows by target. This preserves the class ratio but shrinks the long tail of rare states and purposes — something to keep in mind when the geographic chart in 02 shows noisy tiles for the smaller states.
 3. **What to drop as leakage.** Anything that could only exist after the loan matured — `total_pymnt`, `recoveries`, `last_pymnt_*` — came out. Andrew makes a big deal about leakage in the data-preparation lecture; this was the first time I actually had to apply that discipline on real data rather than a cleaned toy dataset.
 
-Two things I need to fix before modeling, which I caught while reviewing my own notebook:
-
-- The median imputation in cell 21 is fit on the whole dataset. I need to do the train/test split first and fit the imputer on train only. This is exactly the leakage pattern Andrew warns about.
-- `credit_history_years` currently uses a hard-coded `2018-12-31` as the "as-of" date instead of each loan's own `issue_d`. For older loans that gives the model future information. The fix is to compute `(issue_d − earliest_cr_line)` row by row.
-
-Both are easy fixes, but I want to call them out rather than quietly patch them — the point of this project is to catch my own mistakes, not pretend I didn't make any.
+A fourth decision I had to think about after I'd written the first draft: 01 originally imputed missing values with the median of the whole dataset and computed `credit_history_years` against a hard-coded `2018-12-31` reference date. Both were leakage bugs — the imputation fits parameters on data that would include the test set, and the hard-coded reference lets older loans see into the future. I moved the imputation to 03 (where the train/test split happens first, so the imputer can be fit on train only), and the credit-history calculation now runs as `(issue_d − earliest_cr_line)` per row so it only uses information knowable at origination. Flagging these because catching my own mistakes is the point of this project; they also made Andrew's leakage lecture click properly for me.
 
 ### 02 — EDA
 

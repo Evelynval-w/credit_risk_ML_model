@@ -32,7 +32,7 @@ Two exist right now. They have to run in order because 02 reads what 01 writes.
 jupyter notebook
 ```
 
-1. **`notebooks/01_data_cleaning.ipynb`** — loads the raw CSV, keeps 32 columns, builds the binary target, samples down to 250k rows stratified by target, cleans types and missing values, writes `data/processed/loan_cleaned.csv`.
+1. **`notebooks/01_data_cleaning.ipynb`** — loads the raw CSV, keeps 32 columns, builds the binary target, samples down to 250k rows stratified by target, converts string columns to the right types, documents the missing-value pattern (but deliberately doesn't impute — that lives in 03, after the train/test split), writes `data/processed/loan_cleaned.csv`.
 2. **`notebooks/02_eda.ipynb`** — reads the cleaned CSV, generates the charts in `images/` and writes three per-segment summary CSVs under `data/processed/` for later use in a dashboard tool.
 
 Notebooks 03–05 (feature engineering, modeling, business metrics) don't exist yet. Those are what I'm building next.
