@@ -4,10 +4,10 @@ I'm Okoene Makuochukwu, a CS student at EPITA. I'm working through Andrew Ng's M
 
 ## Where this is right now (October 2026)
 
-Cleaning and EDA are done. The actual modeling isn't — I'm partway through the project and this README reflects what's shipped, not what's planned.
+Cleaning, EDA and the preprocessing pipeline are done. The actual modeling isn't — I'm partway through the project and this README reflects what's shipped, not what's planned.
 
-- **Done:** `01_data_cleaning.ipynb`, `02_eda.ipynb`.
-- **Not yet:** `03_feature_engineering.ipynb`, `04_modeling.ipynb`, `05_business_metrics.ipynb`. These are what I'm working on next.
+- **Done:** `01_data_cleaning.ipynb`, `02_eda.ipynb`, `03_feature_engineering.ipynb`.
+- **Not yet:** `04_modeling.ipynb`, `05_business_metrics.ipynb`. These are what I'm working on next.
 - **No metrics in this README yet** — I'll put real ROC-AUC / PR-AUC / expected-loss numbers here once 04 lands. I'd rather have no numbers than invented ones.
 
 ## The question
@@ -40,11 +40,23 @@ A few things stood out:
 - Interest rate tracks default roughly linearly. That's risk-based pricing working as advertised. For modeling, it means `int_rate` and `grade` carry overlapping information — something to think about when I regularize the logistic regression.
 - FICO is the obvious inverse. Default rate drops from about 22% at FICO <650 to about 5% at 800+. No surprise, but worth confirming on this specific sample before relying on it.
 
-One thing to flag: I did EDA on the full sampled dataset, not just a training portion. The clean move is to hold out the test set *before* looking at it, so EDA observations can't bias feature choices. I'm going to redo these grouped statistics on only the train split in 03.
+One thing to flag: I did EDA on the full sampled dataset, not just a training portion. The clean move is to hold out the test set *before* looking at it, so EDA observations can't bias feature choices. 03 redoes the discipline properly from the split onward; I didn't go back and redo 02 against train only, which I'd fix in a cleaner second pass.
+
+### 03 — feature engineering
+
+The whole job of this notebook is the "fit preprocessing on train only" discipline. In order:
+
+1. **Time-aware split by `issue_d`.** 2007–2017 to train, 2018 to test. A random split would be optimistic because credit outcomes drift year to year.
+2. **Six row-wise features.** `fico_avg`, `credit_history_years = issue_d − earliest_cr_line`, `loan_to_income`, `monthly_debt_burden`, `emp_length_num`, `grade_num`. All stateless, so I compute them on both sides the same way.
+3. **Median imputation**, fit on train only. The first step that fits parameters from data, so the discipline starts here.
+4. **One-hot encoding** for `home_ownership`, `verification_status`, `purpose` — fit on train, `handle_unknown='ignore'` for anything the test set has that train didn't.
+5. **Smoothed target encoding for `addr_state`** (50 categories): per-state default rate on train, pooled toward the global mean with `k=50`. One-hotting 50 states would be mostly empty columns; the smoothing keeps the small states from being memorized.
+6. **StandardScaler** fit on train. Trees don't need it, LR does, so I save both the scaled and unscaled matrices.
+
+Outputs land in `data/processed/`: six CSVs for the feature matrices and targets, plus `preprocessors.joblib` (fitted imputer, encoder, state map, scaler, feature-column list) so 04 or an inference-time script can reproduce the pipeline on new loans.
 
 ## What's coming next
 
-- **03 — feature engineering.** Time-aware split by `issue_d` (train on 2007–2017, hold out 2018). Ratios (loan-to-income, debt burden, FICO midpoint), encodings for the categorical features, standardization only for the LR model. These features were originally in 01; I'm moving them so the split happens before any feature construction that pools statistics across rows.
 - **04 — modeling.** Baseline logistic regression first, then regularized LR, then random forest, then XGBoost. Learning curves for each so I can actually diagnose high-bias vs high-variance the way Andrew teaches it. Class imbalance handled with `class_weight='balanced'` first, and SMOTE as a comparison.
 - **05 — business metrics.** Expected loss (PD × LGD × EAD), threshold tuning as a cost-sensitive decision, and a short note on what the model would actually tell a credit team.
 
@@ -55,7 +67,7 @@ I'm working through the second course of the specialization (Advanced Learning A
 - **Bias/variance diagnosis via learning curves** — how I'll compare the four models in 04.
 - **Cost functions and skewed classes** — why 04 will report PR-AUC alongside ROC-AUC, and why 05 picks the decision threshold on expected cost rather than on the ROC curve's elbow.
 - **Regularization** — why I'll start with L2-regularized logistic regression before touching the ensembles.
-- **Data leakage** — the two bugs I called out above, and the time-aware split in 03.
+- **Data leakage** — the two bugs I caught in my own 01 draft, the time-aware split in 03, and the general "fit on train only" rule that shapes every step of 03.
 
 ## Running it yourself
 

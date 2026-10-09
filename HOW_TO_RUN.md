@@ -26,7 +26,7 @@ Download `accepted_2007_to_2018Q4.csv` from the Kaggle link above and drop it in
 
 ## Running the notebooks
 
-Two exist right now. They have to run in order because 02 reads what 01 writes.
+Three exist right now. They have to run in order because each one reads what the previous one writes.
 
 ```bash
 jupyter notebook
@@ -34,8 +34,9 @@ jupyter notebook
 
 1. **`notebooks/01_data_cleaning.ipynb`** — loads the raw CSV, keeps 32 columns, builds the binary target, samples down to 250k rows stratified by target, converts string columns to the right types, documents the missing-value pattern (but deliberately doesn't impute — that lives in 03, after the train/test split), writes `data/processed/loan_cleaned.csv`.
 2. **`notebooks/02_eda.ipynb`** — reads the cleaned CSV, generates the charts in `images/` and writes three per-segment summary CSVs under `data/processed/` for later use in a dashboard tool.
+3. **`notebooks/03_feature_engineering.ipynb`** — does the time-aware split by `issue_d` (2007–2017 train, 2018 test), builds the row-wise derived features, fits imputer / one-hot encoder / smoothed target encoder for state / standard scaler on the train slice only, applies them to both sides, and writes six feature matrices plus a fitted preprocessor bundle to `data/processed/`.
 
-Notebooks 03–05 (feature engineering, modeling, business metrics) don't exist yet. Those are what I'm building next.
+Notebooks 04–05 (modeling, business metrics) don't exist yet. Those are what I'm building next.
 
 ## What gets created
 
@@ -44,7 +45,14 @@ data/processed/
 ├── loan_cleaned.csv              # from 01
 ├── summary_by_grade.csv          # from 02
 ├── summary_by_purpose.csv        # from 02
-└── summary_by_state.csv          # from 02
+├── summary_by_state.csv          # from 02
+├── X_train.csv                   # from 03 — ~200k rows, encoded features, unscaled
+├── X_test.csv                    # from 03 — ~50k rows, encoded features, unscaled
+├── X_train_scaled.csv            # from 03 — standardized version for the LR model
+├── X_test_scaled.csv             # from 03
+├── y_train.csv                   # from 03
+├── y_test.csv                    # from 03
+└── preprocessors.joblib          # from 03 — fitted imputer/encoder/scaler bundle
 
 images/
 ├── 01_target_distribution.png
