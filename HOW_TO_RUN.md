@@ -26,7 +26,7 @@ Download `accepted_2007_to_2018Q4.csv` from the Kaggle link above and drop it in
 
 ## Running the notebooks
 
-Three exist right now. They have to run in order because each one reads what the previous one writes.
+Four exist right now. They have to run in order because each one reads what the previous one writes.
 
 ```bash
 jupyter notebook
@@ -35,8 +35,9 @@ jupyter notebook
 1. **`notebooks/01_data_cleaning.ipynb`** — loads the raw CSV, keeps 32 columns, builds the binary target, samples down to 250k rows stratified by target, converts string columns to the right types, documents the missing-value pattern (but deliberately doesn't impute — that lives in 03, after the train/test split), writes `data/processed/loan_cleaned.csv`.
 2. **`notebooks/02_eda.ipynb`** — reads the cleaned CSV, generates the charts in `images/` and writes three per-segment summary CSVs under `data/processed/` for later use in a dashboard tool.
 3. **`notebooks/03_feature_engineering.ipynb`** — does the time-aware split by `issue_d` (2007–2017 train, 2018 test), builds the row-wise derived features, fits imputer / one-hot encoder / smoothed target encoder for state / standard scaler on the train slice only, applies them to both sides, and writes six feature matrices plus a fitted preprocessor bundle to `data/processed/`.
+4. **`notebooks/04_modeling.ipynb`** — trains four models (majority baseline, vanilla LR, class-imbalance-treated LR with tuned L2, random forest, XGBoost) on the 03 features. Produces a learning curve for the LR to diagnose bias vs variance, a model-comparison bar chart, and a calibration plot for the champion. Saves the champion to `models/best_model.joblib`, test-set predictions to `data/processed/test_predictions.csv`, and the full metrics table to `data/processed/model_metrics.json`. Depends on `xgboost` and `imbalanced-learn` from `requirements.txt`.
 
-Notebooks 04–05 (modeling, business metrics) don't exist yet. Those are what I'm building next.
+Notebook 05 (business metrics — cost-sensitive threshold selection and expected-loss calculation) doesn't exist yet. That's what I'm building next.
 
 ## What gets created
 
@@ -52,7 +53,17 @@ data/processed/
 ├── X_test_scaled.csv             # from 03
 ├── y_train.csv                   # from 03
 ├── y_test.csv                    # from 03
-└── preprocessors.joblib          # from 03 — fitted imputer/encoder/scaler bundle
+├── preprocessors.joblib          # from 03 — fitted imputer/encoder/scaler bundle
+├── test_predictions.csv          # from 04 — per-loan probability + target + loan_amnt
+└── model_metrics.json            # from 04 — full comparison table
+
+models/
+└── best_model.joblib             # from 04 — champion by test-set PR-AUC
+
+images/
+├── 13_learning_curve_lr.png      # from 04
+├── 14_model_comparison_pr_auc.png# from 04
+└── 15_calibration_champion.png   # from 04
 
 images/
 ├── 01_target_distribution.png

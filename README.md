@@ -4,11 +4,11 @@ I'm Okoene Makuochukwu, a CS student at EPITA. I'm working through Andrew Ng's M
 
 ## Where this is right now (October 2026)
 
-Cleaning, EDA and the preprocessing pipeline are done. The actual modeling isn't — I'm partway through the project and this README reflects what's shipped, not what's planned.
+Cleaning, EDA, preprocessing and the modeling pass are done. Business-metric work isn't yet — I'm partway through the project and this README reflects what's shipped, not what's planned.
 
-- **Done:** `01_data_cleaning.ipynb`, `02_eda.ipynb`, `03_feature_engineering.ipynb`.
-- **Not yet:** `04_modeling.ipynb`, `05_business_metrics.ipynb`. These are what I'm working on next.
-- **No metrics in this README yet** — I'll put real ROC-AUC / PR-AUC / expected-loss numbers here once 04 lands. I'd rather have no numbers than invented ones.
+- **Done:** `01_data_cleaning.ipynb`, `02_eda.ipynb`, `03_feature_engineering.ipynb`, `04_modeling.ipynb`.
+- **Not yet:** `05_business_metrics.ipynb` (cost-sensitive threshold selection, expected-loss calculation). Next.
+- **Metrics in this README:** 04 saves its full comparison table to `data/processed/model_metrics.json`. I'll quote the champion's ROC-AUC / PR-AUC / Brier here once I've run the notebook end-to-end on my own machine. Rather have no numbers than invented ones.
 
 ## The question
 
@@ -55,9 +55,21 @@ The whole job of this notebook is the "fit preprocessing on train only" discipli
 
 Outputs land in `data/processed/`: six CSVs for the feature matrices and targets, plus `preprocessors.joblib` (fitted imputer, encoder, state map, scaler, feature-column list) so 04 or an inference-time script can reproduce the pipeline on new loans.
 
+### 04 — modeling
+
+Four models in a progression, each one answering a specific question:
+
+1. **Majority-class baseline.** Floor every real model has to clear.
+2. **Vanilla logistic regression.** First honest number from a model that actually uses the features.
+3. **Regularized logistic regression** with `class_weight='balanced'` and L2 strength tuned via grid search + 3-fold stratified CV on PR-AUC. Also where I check the class-imbalance strategy: no-treatment vs `class_weight` vs SMOTE on the same test set.
+4. **Random forest and XGBoost.** Tree ensembles to see how much a non-linear model class buys over the LR.
+
+After the tuned LR, a learning curve diagnoses whether the model is capacity-limited (train and validation plateau close together → need a bigger model class) or data-limited (open gap → more training data would help). Andrew's bias-variance framing made concrete on a real dataset.
+
+The champion (by test-set PR-AUC) is saved to `models/best_model.joblib`, with its test-set probabilities saved alongside for 05 to use. The notebook ends with a reliability diagram so 05 knows whether to trust the probabilities at face value when computing expected loss or whether to post-hoc calibrate them first.
+
 ## What's coming next
 
-- **04 — modeling.** Baseline logistic regression first, then regularized LR, then random forest, then XGBoost. Learning curves for each so I can actually diagnose high-bias vs high-variance the way Andrew teaches it. Class imbalance handled with `class_weight='balanced'` first, and SMOTE as a comparison.
 - **05 — business metrics.** Expected loss (PD × LGD × EAD), threshold tuning as a cost-sensitive decision, and a short note on what the model would actually tell a credit team.
 
 ## How I'm learning this
