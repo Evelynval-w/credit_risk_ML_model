@@ -8,7 +8,7 @@ Cleaning, EDA, preprocessing and the modeling pass are done. Business-metric wor
 
 - **Done:** `01_data_cleaning.ipynb`, `02_eda.ipynb`, `03_feature_engineering.ipynb`, `04_modeling.ipynb`.
 - **Not yet:** `05_business_metrics.ipynb` (cost-sensitive threshold selection, expected-loss calculation). Next.
-- **Metrics in this README:** 04 saves its full comparison table to `data/processed/model_metrics.json`. I'll quote the champion's ROC-AUC / PR-AUC / Brier here once I've run the notebook end-to-end on my own machine. Rather have no numbers than invented ones.
+- **Headline numbers.** Champion is XGBoost on the 2018 test set (n ≈ 12k, 27% default base rate): ROC-AUC 0.709, PR-AUC 0.452, Brier 0.215. 04 saves the full seven-model comparison to `data/processed/model_metrics.json`.
 
 ## The question
 
