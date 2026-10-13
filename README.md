@@ -4,11 +4,11 @@ I'm Okoene Makuochukwu, a CS student at EPITA. I'm working through Andrew Ng's M
 
 ## Where this is right now (October 2026)
 
-Cleaning, EDA, preprocessing and the modeling pass are done. Business-metric work isn't yet — I'm partway through the project and this README reflects what's shipped, not what's planned.
+All five notebooks are done end-to-end: cleaning, EDA, preprocessing, modeling, and a cost-sensitive threshold recommendation. The things that would still need to happen before leaning on this for a real credit decision are in the "What I'd want to add next" section at the bottom.
 
-- **Done:** `01_data_cleaning.ipynb`, `02_eda.ipynb`, `03_feature_engineering.ipynb`, `04_modeling.ipynb`.
-- **Not yet:** `05_business_metrics.ipynb` (cost-sensitive threshold selection, expected-loss calculation). Next.
-- **Headline numbers.** Champion is XGBoost on the 2018 test set (n ≈ 12k, 27% default base rate): ROC-AUC 0.709, PR-AUC 0.452, Brier 0.215. 04 saves the full seven-model comparison to `data/processed/model_metrics.json`.
+- **Done:** `01_data_cleaning.ipynb`, `02_eda.ipynb`, `03_feature_engineering.ipynb`, `04_modeling.ipynb`, `05_business_metrics.ipynb`.
+- **Headline numbers (ranking).** Champion is XGBoost on the 2018 test set (n ≈ 12k, 27% default base rate): ROC-AUC 0.709, PR-AUC 0.452, Brier 0.215 (0.181 after isotonic recalibration in 05). 04 saves the full seven-model comparison to `data/processed/model_metrics.json`.
+- **Headline numbers (decision).** At the operating point `t* = 0.58` chosen on expected portfolio profit in 05: approve 95.5% of applications, catch 10.1% of defaulters, net $15.27M on the holdout vs. $13.51M for approve-all. The model is the only policy evaluated that beats approve-all; the "reject grade F/G" one-line rules all destroy value on this test set.
 
 ## The question
 
@@ -68,9 +68,25 @@ After the tuned LR, a learning curve diagnoses whether the model is capacity-lim
 
 The champion (by test-set PR-AUC) is saved to `models/best_model.joblib`, with its test-set probabilities saved alongside for 05 to use. The notebook ends with a reliability diagram so 05 knows whether to trust the probabilities at face value when computing expected loss or whether to post-hoc calibrate them first.
 
-## What's coming next
+### 05 — business metrics
 
-- **05 — business metrics.** Expected loss (PD × LGD × EAD), threshold tuning as a cost-sensitive decision, and a short note on what the model would actually tell a credit team.
+The question 04 didn't answer: given a probability for each application, which ones should the credit team actually approve, and at what dollar cost? Four moves:
+
+1. **Recalibrate the probabilities.** 04's reliability diagram hinted at miscalibration; here I reload the champion, score the training set, fit an isotonic regressor on train, and apply it to test. Brier drops from 0.215 → 0.181 (−15%), so the isotonic version is used downstream.
+2. **Estimate LGD from the data.** Rather than hard-coding the usual industry 0.9, I compute mean recovery / loan_amnt on the ~260k training-period charged-off loans and get LGD ≈ 0.92. The notebook argues explicitly why using `recoveries` as an aggregate train-time scalar isn't the same leakage mistake as using it as a per-loan feature.
+3. **Sweep the decision threshold on expected portfolio profit.** Four-outcome cost model: approve-and-pays earns interest, approve-and-defaults loses `loan_amnt × LGD`, reject-and-would've-paid is forgone interest, reject-and-would've-defaulted is avoided loss. The threshold that maximizes profit on the 2018 holdout is `t* = 0.58`.
+4. **Sensitivity + a sanity-check baseline.** Rerun the sweep across LGD ∈ [0.5, 1.0] — the operating point moves materially, which is itself a finding — and compare the model's profit against the simpler "reject grades F/G" rules.
+
+The honest observation is that the model is a thin top-skim: it approves 95.5% of applications and clears approve-all by only $1.76M. A real but modest edge, and the only policy evaluated that beats approve-all at all.
+
+## What I'd want to add next
+
+The notebooks end at a working threshold recommendation, but what's in the repo isn't a production credit model — it's a first honest pass. The gaps I'd want to close before anyone leaned on this for a real decision:
+
+- **Vintage validation**, not just a single 2018 holdout. The time-aware split in 03 was a first step; a proper check would train/test across multiple issue-year vintages and look at degradation over time.
+- **LGD as a model, not a constant.** The sensitivity analysis in 05 shows `t*` moves from 0.89 at LGD = 0.5 to 0.58 at LGD ≥ 0.9 — so the recommendation substantially depends on one scalar. Modeling LGD per grade (or per grade × purpose) would make the operating point sturdier.
+- **Cost of capital on the TN side and servicing cost on every approved loan.** The current cost model treats interest earned as pure upside, which overstates profitability.
+- **A proper amortization formula.** Simple interest overstates interest income on long-term loans.
 
 ## How I'm learning this
 
